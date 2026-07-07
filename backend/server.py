@@ -431,7 +431,6 @@ async def accept_delivery(body: AcceptBody, current=Depends(get_current_user)):
     )
     if not result:
         raise HTTPException(status_code=409, detail="Delivery already taken, expired, or not offered to you")
-    # Attach rider info for client
     return {"delivery": result}
 
 
@@ -465,7 +464,6 @@ async def request_delivery(body: DeliveryRequestBody, current=Depends(get_curren
     if current["role"] != "CLIENT":
         raise HTTPException(status_code=403, detail="Only clients can request deliveries")
 
-    # Find nearest 3 online riders within radius
     all_riders_cursor = db.users.find(
         {"role": "RIDER", "rider.isOnline": True, "rider.currentLat": {"$ne": None}},
         {"_id": 0, "id": 1, "rider.currentLat": 1, "rider.currentLng": 1},
@@ -761,7 +759,7 @@ async def _mark_paid(reference: str, provider_status: str, provider_data: dict) 
         {"role": "RIDER", "rider.isOnline": True, "rider.currentLat": {"$ne": None}},
         {"_id": 0, "id": 1, "rider.currentLat": 1, "rider.currentLng": 1},
     )
-    fresh_candidates: list[tuple[str, float]] = []
+    fresh_candidates = []
     async for r in all_riders_cursor:
         rd = r.get("rider", {})
         d = haversine_km(delivery["pickupLat"], delivery["pickupLng"], rd["currentLat"], rd["currentLng"])
@@ -987,21 +985,35 @@ async def geocode_reverse(lat: float, lng: float, current=Depends(get_current_us
     return {"label": label}
 
 
-# ---------- Seed Data ----------
+# ---------- Seed Data Configured For Awka, Nigeria ----------
 @api.post("/seed")
 async def seed_data():
+    # Centered coordinates around Awka (UNIZIK / Ifite / Arthur Eze Ave cluster)
+    AWKA_LAT = 6.2443
+    AWKA_LNG = 7.0822
+
     seed_riders = [
-        {"name": "Chuka Okafor", "phone": "+2348011111111", "lat": 6.4281, "lng": 3.4219, "plate": "LAG-234-AB", "vehicle": "Bajaj Boxer"},
-        {"name": "Femi Adeyemi", "phone": "+2348022222222", "lat": 6.4350, "lng": 3.4280, "plate": "LAG-892-XY", "vehicle": "Suzuki 150"},
-        {"name": "Musa Ibrahim", "phone": "+2348033333333", "lat": 6.4180, "lng": 3.4150, "plate": "LAG-501-CD", "vehicle": "TVS Star"},
-        {"name": "Emeka Nwosu", "phone": "+2348044444444", "lat": 6.4400, "lng": 3.4350, "plate": "LAG-663-EF", "vehicle": "Bajaj Pulsar"},
-        {"name": "Tunde Balogun", "phone": "+2348055555555", "lat": 6.4230, "lng": 3.4100, "plate": "LAG-777-GH", "vehicle": "Honda CG125"},
+        {"name": "Chuka Okafor", "phone": "+2348011111111", "lat": AWKA_LAT + 0.0035, "lng": AWKA_LNG - 0.0042, "plate": "AWK-234-AB", "vehicle": "Bajaj Boxer"},
+        {"name": "Femi Adeyemi", "phone": "+2348022222222", "lat": AWKA_LAT - 0.0051, "lng": AWKA_LNG + 0.0068, "plate": "AWK-892-XY", "vehicle": "Suzuki 150"},
+        {"name": "Musa Ibrahim", "phone": "+2348033333333", "lat": AWKA_LAT + 0.0072, "lng": AWKA_LNG + 0.0015, "plate": "AWK-501-CD", "vehicle": "TVS Star"},
+        {"name": "Emeka Nwosu", "phone": "+2348044444444", "lat": AWKA_LAT - 0.0022, "lng": AWKA_LNG - 0.0071, "plate": "AWK-663-EF", "vehicle": "Bajaj Pulsar"},
+        {"name": "Tunde Balogun", "phone": "+2348055555555", "lat": AWKA_LAT + 0.0019, "lng": AWKA_LNG + 0.0049, "plate": "AWK-777-GH", "vehicle": "Honda CG125"},
     ]
 
     created = 0
     for r in seed_riders:
         exists = await db.users.find_one({"phone": r["phone"]})
         if exists:
+            # Update their location to Awka dynamically if they already exist
+            await db.users.update_one(
+                {"phone": r["phone"]},
+                {"$set": {
+                    "rider.currentLat": r["lat"],
+                    "rider.currentLng": r["lng"],
+                    "rider.isOnline": True,
+                    "rider.lastLocationUpdate": datetime.now(timezone.utc).isoformat()
+                }}
+            )
             continue
         uid = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
@@ -1034,14 +1046,14 @@ async def seed_data():
         await db.users.insert_one({
             "id": uid,
             "phone": demo_phone,
-            "name": "Ada Demo",
+            "name": "Awka Tester",
             "password": hash_password("password123"),
             "role": "CLIENT",
             "createdAt": now,
             "updatedAt": now,
         })
 
-    return {"success": True, "ridersSeeded": created, "message": "Seed complete"}
+    return {"success": True, "ridersSeeded": created, "message": "Awka seed complete"}
 
 
 @api.get("/")
@@ -1052,7 +1064,16 @@ async def root():
 app.include_router(api)
 
 
-# --- Root-level health endpoint exposed explicitly at /health ---
+# --- Root-level custom health endpoints to fix Railway 404 healthcheck issues ---
+@app.get("/")
+async def root_health_check():
+    return {
+        "status": "healthy",
+        "message": "WakaWaka API Root",
+        "mode": f"Paystack mock mode: {IS_PAYSTACK_MOCK}",
+    }
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "mode": f"Paystack mock mode: {IS_PAYSTACK_MOCK}"}
