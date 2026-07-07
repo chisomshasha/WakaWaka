@@ -53,7 +53,7 @@ module.exports = () => ({
       typedRoutes: true,
     },
     extra: {
-      backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL || '',
+      backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL || 'https://wakawaka-production.up.railway.app',
     },
   },
 });
