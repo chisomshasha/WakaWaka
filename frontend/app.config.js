@@ -54,6 +54,9 @@ module.exports = () => ({
     },
     extra: {
       backendUrl: process.env.EXPO_PUBLIC_BACKEND_URL || 'https://wakawaka-production.up.railway.app',
+      eas: {
+        projectId: process.env.EAS_PROJECT_ID || '965ff5f4-7f83-427c-b2bd-bea50236fe75'
+      }
     },
   },
 });
