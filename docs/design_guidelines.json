@@ -1,0 +1,156 @@
+{
+  "theme_and_archetype": {
+    "domain": "Logistics & Ride-Hailing",
+    "theme": "LIGHT",
+    "archetype": "4 (Swiss & High-Contrast) mixed with High-Energy African Delivery Branding",
+    "reasoning": "High-contrast light theme ensures map legibility under bright sunlight (Lagos streets). Brutalist, schematic clarity mixed with a hyper-vibrant primary color for brand recognition and speed.",
+    "vibe": "Fast, bold, reliable, local, high-energy."
+  },
+  "color_palette": {
+    "primary": {
+      "hex": "#FF4F00",
+      "name": "Okada Orange",
+      "usage": "Primary buttons, route lines on map, active icons, rider pins, online toggles."
+    },
+    "secondary": {
+      "hex": "#0A0A0A",
+      "name": "Asphalt Black",
+      "usage": "Headers, heavy text, role selection cards, bottom sheet drag handles."
+    },
+    "background": {
+      "hex": "#FAFAFA",
+      "name": "Off-White",
+      "usage": "App background (underneath cards), empty states."
+    },
+    "surface": {
+      "hex": "#FFFFFF",
+      "name": "Pure White",
+      "usage": "Bottom sheets, cards, inputs."
+    },
+    "text": {
+      "primary": "#0A0A0A",
+      "secondary": "#475569",
+      "tertiary": "#94A3B8"
+    },
+    "status": {
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444"
+    },
+    "map_elements": {
+      "route_line": "#FF4F00",
+      "pickup_pin": "#0A0A0A",
+      "dropoff_pin": "#10B981"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "heading": "Outfit",
+      "body": "Manrope"
+    },
+    "sizes": {
+      "h1_hero": "text-4xl font-bold tracking-tight",
+      "h2_section": "text-2xl font-bold tracking-tight",
+      "h3_card": "text-lg font-semibold",
+      "body_main": "text-base font-medium",
+      "body_small": "text-sm font-normal",
+      "label_tiny": "text-xs font-bold uppercase tracking-wider"
+    },
+    "rules": {
+      "no_default_sans": "Do NOT use Inter or Roboto.",
+      "contrast": "Ensure minimum 4.5:1 contrast for all text. Use Asphalt Black for primary text."
+    }
+  },
+  "layout_spacing_strategy": {
+    "base_grid": "Mobile-first, flexible layout using padding scales.",
+    "spacing_scale": {
+      "xs": "p-2",
+      "sm": "p-4",
+      "md": "p-6",
+      "lg": "p-8",
+      "xl": "p-12"
+    },
+    "card_padding": "p-6 (Generous internal padding to prevent cramped text).",
+    "map_layout": "Full screen (absolute fill) with overlaid floating components (Search bars top, Bottom Sheets bottom)."
+  },
+  "component_guidelines": {
+    "buttons": {
+      "primary": "bg-[#FF4F00] text-white rounded-xl h-14 flex items-center justify-center font-bold text-lg",
+      "secondary": "bg-[#0A0A0A] text-white rounded-xl h-14 flex items-center justify-center font-bold text-lg",
+      "outline": "border-2 border-[#0A0A0A] text-[#0A0A0A] rounded-xl h-14 flex items-center justify-center font-bold text-lg"
+    },
+    "bottom_sheet": {
+      "container": "bg-white rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pt-2 pb-8 px-6",
+      "handle": "w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"
+    },
+    "cards": {
+      "container": "bg-white rounded-2xl border border-slate-100 shadow-sm p-5",
+      "earnings_card": "bg-[#0A0A0A] text-white rounded-2xl p-6"
+    },
+    "inputs": {
+      "container": "bg-slate-50 border border-slate-200 rounded-xl h-14 px-4 flex items-center",
+      "text": "text-base font-medium text-[#0A0A0A]"
+    },
+    "map": {
+      "style": "Use a desaturated or 'silver' Google Maps JSON style to ensure the Okada Orange routes and markers stand out.",
+      "rider_marker": "Custom View with Okada Orange background, white motorcycle icon, rounded-full, with subtle pulse animation."
+    }
+  },
+  "screens_and_features": {
+    "role_selection": {
+      "layout": "Split screen or 2 massive cards taking 40% height each. High contrast.",
+      "customer_card": "Light theme card. Headline 'I need a delivery'. Image of package.",
+      "rider_card": "Dark theme card (Asphalt Black). Headline 'I am a Rider'. Image of rider. Okada Orange accents."
+    },
+    "customer_home": {
+      "map": "Full screen map.",
+      "floating_header": "Location picker floating at the top (absolute, z-10, top-12).",
+      "bottom_sheet": "Persistent bottom sheet for 'Where to?'. Includes recent locations, package size selector, and 'Request Rider' button."
+    },
+    "rider_home": {
+      "status_bar": "Massive toggle button at top: 'GO ONLINE' (Greyed out) -> 'YOU ARE ONLINE' (Okada Orange).",
+      "earnings_summary": "Floating card showing today's earnings overlaying the map.",
+      "incoming_request_modal": "Pops up from bottom. Massive 60s countdown timer (circular progress). Shows Pickup -> Dropoff, Est. Fare, Distance. Swipe to Accept button."
+    },
+    "active_delivery": {
+      "map": "Shows route from Rider to Pickup (or Pickup to Dropoff).",
+      "bottom_sheet": "Shows assigned user/rider details, phone call button (circular, green), and 'Slide to Arrive' / 'Slide to Complete' action."
+    },
+    "profile_and_history": {
+      "layout": "List view of cards.",
+      "history_card": "Shows date, route (A to B), status (Completed/Cancelled), and amount."
+    }
+  },
+  "media_urls": {
+    "role_rider_bg": {
+      "url": "https://images.pexels.com/photos/26760670/pexels-photo-26760670.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "African motorcycle rider in city. Use for Rider Role Selection card or onboarding."
+    },
+    "role_customer_bg": {
+      "url": "https://images.pexels.com/photos/4440774/pexels-photo-4440774.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Exchanging package. Use for Customer Role Selection card or onboarding."
+    },
+    "traffic_context": {
+      "url": "https://images.pexels.com/photos/5409303/pexels-photo-5409303.jpeg",
+      "description": "Lagos city traffic view. Use for empty states or splash screens."
+    }
+  },
+  "testing_attributes": {
+    "rule": "All interactive elements MUST have a data-testid attribute.",
+    "examples": [
+      "data-testid='role-customer-button'",
+      "data-testid='role-rider-button'",
+      "data-testid='request-delivery-button'",
+      "data-testid='accept-request-swipe'",
+      "data-testid='online-toggle'"
+    ]
+  },
+  "instructions_to_main_agent": {
+    "tech_stack": "React Native (Expo), standard .js files (no .tsx). Use NativeWind or React Native StyleSheet depending on project setup (Tailwind classes provided in guidelines).",
+    "maps": "Implement using react-native-maps. Render custom markers using <Marker> with nested <View> elements to match the WakaWaka brand.",
+    "bottom_sheets": "Use @gorhom/bottom-sheet or create a robust animated View for the heavy bottom-sheet usage.",
+    "icons": "Use lucide-react-native or @expo/vector-icons. Prefer bold, geometric icons (e.g., Package, MapPin, Navigation).",
+    "animations": "Use react-native-reanimated for the 60s timeout circular progress bar and the 'Slide to Accept/Complete' gesture.",
+    "modals": "Avoid standard Alert. Use custom Modal or Bottom Sheets for all prompts to maintain the super-app aesthetic."
+  }
+}
