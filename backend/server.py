@@ -486,15 +486,9 @@ async def request_delivery(body: DeliveryRequestBody, current=Depends(get_curren
     now = datetime.now(timezone.utc).isoformat()
     delivery_id = str(uuid.uuid4())
 
-    # Price is always recomputed server-side from distance — never trust the
-    # client-supplied price directly, since a tampered request could set any
-    # fare (including 0). The formula is deterministic, so honest clients see
-    # the exact number they were already quoted by /price-estimate.
     price = calc_price(dist)
 
-    # Payment status: CASH is paid on delivery, CARD/WALLET must pay upfront via Paystack
     payment_status = "PAID_ON_DELIVERY" if body.paymentMethod == "CASH" else "PENDING_PAYMENT"
-    # Compute platform fee & rider earning
     platform_fee = round(price * (PLATFORM_FEE_PERCENT / 100.0), 2)
     rider_earning = round(price - platform_fee, 2)
 
@@ -550,10 +544,6 @@ async def _attach_rider(delivery: dict) -> dict:
 
 
 async def _maybe_expire(d: dict) -> dict:
-    """Lazily flip a PENDING delivery to NO_RIDERS_AVAILABLE once the
-    60s matching window has passed with nobody accepting. There's no
-    background job in this app, so this check runs whenever a delivery
-    is read (tracking poll, history list) rather than on a timer."""
     if d and d.get("status") == "PENDING":
         try:
             created_at = datetime.fromisoformat(d["createdAt"])
@@ -611,7 +601,6 @@ async def update_delivery_status(delivery_id: str, body: StatusUpdateBody,
         update["pickedUpAt"] = now
     elif body.status == "DELIVERED":
         update["deliveredAt"] = now
-        # Increment rider stats using riderEarning (85%), not gross price
         earning = d.get("riderEarning", d.get("price", 0))
         await db.users.update_one(
             {"id": current["id"]},
@@ -652,7 +641,6 @@ async def rate_delivery(delivery_id: str, body: RateBody, current=Depends(get_cu
         raise HTTPException(status_code=400, detail="Already rated")
 
     await db.deliveries.update_one({"id": delivery_id}, {"$set": {"rating": body.rating}})
-    # Update rider's average rating
     if d.get("riderId"):
         rider_user = await db.users.find_one({"id": d["riderId"]}, {"_id": 0})
         if rider_user:
@@ -665,7 +653,6 @@ async def rate_delivery(delivery_id: str, body: RateBody, current=Depends(get_cu
     return {"success": True}
 
 
-
 # ---------- Paystack Payment Routes ----------
 class PaymentInitBody(BaseModel):
     deliveryId: str
@@ -673,9 +660,8 @@ class PaymentInitBody(BaseModel):
 
 
 async def _paystack_call(method: str, path: str, json_body: Optional[dict] = None):
-    """Wrapper around Paystack API. When key is a placeholder, we return mocked responses."""
     if IS_PAYSTACK_MOCK:
-        return None  # signals mock mode to caller
+        return None
     headers = {
         "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
         "Content-Type": "application/json",
@@ -703,7 +689,6 @@ async def init_payment(body: PaymentInitBody, request: Request, current=Depends(
     amount_kobo = int(round(delivery["price"] * 100))
     email = body.email or f"{current['phone'].replace('+','')}@wakawaka.demo"
 
-    # Build callback URL back to our backend so WebView can detect completion
     base_url = str(request.base_url).rstrip("/")
     callback_url = f"{base_url}/api/payments/callback"
 
@@ -720,7 +705,6 @@ async def init_payment(body: PaymentInitBody, request: Request, current=Depends(
     )
 
     if paystack_res is None:
-        # MOCK mode: use our internal mock authorization page
         authorization_url = f"{base_url}/api/payments/mock-checkout?reference={reference}"
         access_code = "mock_access_code"
     else:
@@ -758,7 +742,6 @@ class PaymentVerifyBody(BaseModel):
 
 
 async def _mark_paid(reference: str, provider_status: str, provider_data: dict) -> Optional[dict]:
-    """Idempotently mark payment as PAID and flip delivery to PENDING so riders see it."""
     payment = await db.payments.find_one({"reference": reference}, {"_id": 0})
     if not payment:
         return None
@@ -774,8 +757,6 @@ async def _mark_paid(reference: str, provider_status: str, provider_data: dict) 
                  "providerData": provider_data, "paidAt": now}},
     )
 
-    # Recompute candidate riders NOW (after payment) so we don't dispatch
-    # stale candidates that may have gone offline while the customer was paying.
     all_riders_cursor = db.users.find(
         {"role": "RIDER", "rider.isOnline": True, "rider.currentLat": {"$ne": None}},
         {"_id": 0, "id": 1, "rider.currentLat": 1, "rider.currentLng": 1},
@@ -793,9 +774,9 @@ async def _mark_paid(reference: str, provider_status: str, provider_data: dict) 
         {"id": payment["deliveryId"]},
         {"$set": {
             "paymentStatus": "PAID",
-            "status": "PENDING",  # Now visible to riders
+            "status": "PENDING",
             "candidateRiders": candidate_ids,
-            "createdAt": now,  # Reset the 60s timer to now, since payment can take time
+            "createdAt": now,
             "updatedAt": now,
             "paidAt": now,
         }},
@@ -812,14 +793,12 @@ async def verify_payment(body: PaymentVerifyBody, current=Depends(get_current_us
     if not delivery or delivery["clientId"] != current["id"]:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    # Idempotent short-circuit
     if delivery.get("paymentStatus") == "PAID":
         return {"paymentStatus": "PAID", "delivery": delivery}
 
     provider_res = await _paystack_call("GET", f"/transaction/verify/{body.reference}")
 
     if provider_res is None:
-        # MOCK mode: verify against our own mock DB flag
         if payment.get("status") == "MOCK_APPROVED":
             updated = await _mark_paid(body.reference, "success", {"mock": True})
             return {"paymentStatus": "PAID", "delivery": updated}
@@ -900,7 +879,6 @@ async def mock_approve(reference: str):
         {"reference": reference},
         {"$set": {"status": "MOCK_APPROVED", "updatedAt": now}},
     )
-    # Also mark delivery as paid immediately so verify short-circuits
     await _mark_paid(reference, "success", {"mock": True})
     return HTMLResponse(_callback_html(reference, "success"))
 
@@ -917,7 +895,6 @@ async def mock_cancel(reference: str):
 
 @api.get("/payments/callback", response_class=HTMLResponse)
 async def payments_callback(reference: str = ""):
-    """Landing page after Paystack redirect. WebView detects this URL and closes."""
     return HTMLResponse(_callback_html(reference, "success"))
 
 
@@ -949,7 +926,6 @@ def _callback_html(reference: str, outcome: str) -> str:
 
 @api.post("/paystack/webhook")
 async def paystack_webhook(request: Request):
-    """Optional Paystack webhook — verifies HMAC signature and marks payment as PAID."""
     body_bytes = await request.body()
     signature = request.headers.get("x-paystack-signature", "")
     if not IS_PAYSTACK_MOCK:
@@ -967,13 +943,7 @@ async def paystack_webhook(request: Request):
     return {"received": True}
 
 
-# ---------- Geocoding (free, no API key — proxies OpenStreetMap Nominatim) ----------
-# Nominatim's usage policy requires a descriptive User-Agent and asks that
-# high-volume apps avoid hitting the public instance directly from many
-# clients. Proxying through our own backend (one server, one IP, sane
-# timeouts) keeps this policy-friendly for demo/MVP traffic. If usage grows,
-# swap this for a paid provider (Google Places, LocationIQ) or a self-hosted
-# Nominatim instance — the request/response shape here won't need to change.
+# ---------- Geocoding ----------
 GEOCODE_USER_AGENT = "WakaWaka-Delivery-App/1.0 (+https://github.com/exit-media/wakawaka)"
 
 
@@ -1017,12 +987,9 @@ async def geocode_reverse(lat: float, lng: float, current=Depends(get_current_us
     return {"label": label}
 
 
-
 # ---------- Seed Data ----------
 @api.post("/seed")
 async def seed_data():
-    """Seed sample riders + demo customer for testing. Idempotent."""
-    # Sample locations around Lagos, Nigeria (Victoria Island area)
     seed_riders = [
         {"name": "Chuka Okafor", "phone": "+2348011111111", "lat": 6.4281, "lng": 3.4219, "plate": "LAG-234-AB", "vehicle": "Bajaj Boxer"},
         {"name": "Femi Adeyemi", "phone": "+2348022222222", "lat": 6.4350, "lng": 3.4280, "plate": "LAG-892-XY", "vehicle": "Suzuki 150"},
@@ -1060,7 +1027,6 @@ async def seed_data():
         })
         created += 1
 
-    # Demo customer
     demo_phone = "+2348099999999"
     if not await db.users.find_one({"phone": demo_phone}):
         uid = str(uuid.uuid4())
@@ -1086,9 +1052,14 @@ async def root():
 app.include_router(api)
 
 
+# --- Root-level health endpoint exposed explicitly at /health ---
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "mode": f"Paystack mock mode: {IS_PAYSTACK_MOCK}"}
+
+
 @app.on_event("startup")
 async def startup():
-    # Ensure indexes
     await db.users.create_index("phone", unique=True)
     await db.users.create_index("id", unique=True)
     await db.deliveries.create_index("id", unique=True)
