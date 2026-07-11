@@ -74,6 +74,24 @@ export default function LocationPicker() {
     chooseResult({ label: l.name, lat: l.lat, lng: l.lng });
   }, [chooseResult]);
 
+  const chooseCoord = useCallback(async (lat: number, lng: number) => {
+    // Show the pin immediately with a placeholder label, then fill in the
+    // real address once reverse geocoding responds — feels instant even on
+    // a slow connection.
+    setSelected({ label: `${lat.toFixed(5)}, ${lng.toFixed(5)}`, lat, lng });
+    setQuery('');
+    setResults([]);
+    try {
+      const rev = await apiFetch(`/geocode/reverse?lat=${lat}&lng=${lng}`);
+      if (rev?.label) {
+        setSelected({ label: rev.label, lat, lng });
+        setQuery(rev.label);
+      }
+    } catch (e) {
+      console.log('reverse geocode err', e);
+    }
+  }, [apiFetch]);
+
   const findMyself = useCallback(async () => {
     setLocating(true);
     try {
@@ -178,6 +196,7 @@ export default function LocationPicker() {
             ref={mapRef}
             region={{ latitude: initialLat, longitude: initialLng, latitudeDelta: 0.03, longitudeDelta: 0.03 }}
             markers={selected ? [{ id: 'selected', coord: { latitude: selected.lat, longitude: selected.lng }, variant: field }] : []}
+            onMapLongPress={(coord) => chooseCoord(coord.latitude, coord.longitude)}
             testID="location-picker-map"
           />
           {selected ? (
@@ -189,7 +208,7 @@ export default function LocationPicker() {
             <View style={styles.selectedBanner}>
               <MaterialCommunityIcons name="information-outline" size={16} color={Colors.textTertiary} />
               <Text style={[styles.selectedTxt, { color: Colors.textTertiary }]}>
-                Search an address, tap a Lagos landmark, or use "Find Myself on Map"
+                Search an address, tap a Lagos landmark, use "Find Myself on Map", or press and hold anywhere on the map
               </Text>
             </View>
           )}
