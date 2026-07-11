@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "6.1.2",
+    "@expo-google-fonts/manrope": "0.4.2",
+    "@expo-google-fonts/outfit": "0.4.3",
     "@expo/vector-icons": "15.1.1",
     "@gorhom/bottom-sheet": "5.2.14",
     "@maplibre/maplibre-react-native": "11.3.6",
