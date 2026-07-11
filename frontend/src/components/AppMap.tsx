@@ -26,9 +26,15 @@ export interface AppMapProps {
   onRegionChange?: (r: any) => void;
   /** Fired with the tapped map coordinate. Used by the address picker. */
   onMapPress?: (coord: Coord) => void;
+  /** Fired after a press-and-hold on the map (native only). Used to let the
+   * user move the pickup/dropoff pin by long-pressing anywhere on the map. */
+  onMapLongPress?: (coord: Coord) => void;
   /** Max zoom level (native only). Vector tiles comfortably support up to
    * ~z20, which resolves individual buildings (well under 5m on the ground). */
   maxZoomLevel?: number;
+  /** Shows a small floating button (native only) to cycle between free
+   * OpenFreeMap styles (Streets/Bright/Light). Defaults to true. */
+  showStyleSwitcher?: boolean;
   testID?: string;
 }
 
